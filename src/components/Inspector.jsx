@@ -2,31 +2,27 @@ import './Inspector.css';
 
 // Visual identity for each pipeline stage
 const NODE_META = {
-  auth:      { label: 'OAuth Token',   color: '#7c3aed', short: 'Auth'     },
-  products:  { label: 'Products API',  color: '#2563eb', short: 'Products' },
-  brand:     { label: 'Brand Details', color: '#818cf8', short: 'Brand'    },
-  csv:       { label: 'Inventory CSV', color: '#16a34a', short: 'CSV'      },
-  transform: { label: 'Transform',     color: '#0891b2', short: 'Transform' },
+  auth:     { label: 'OAuth Token',   color: '#7c3aed', short: 'Auth'     },
+  products: { label: 'Products API',  color: '#2563eb', short: 'Products' },
+  csv:      { label: 'Inventory CSV', color: '#16a34a', short: 'CSV'      },
+  branch:   { label: 'Branch Path',   color: '#f59e0b', short: 'Branch'   },
 };
 
 // Which pipeline node introduced each field
 const FIELD_ORIGIN = {
-  token:          'auth',      expires_in:     'auth',
-  sku:            'products',  name:           'products',
-  price:          'products',  brand_id:       'products',  category:       'products',
-  brand_name:     'brand',     founded:        'brand',
-  country:        'brand',     warranty_years: 'brand',
-  stock:          'csv',       warehouse:      'csv',       reorder_point:  'csv',
-  sale_price:     'transform', display_name:   'transform',
-  in_stock:       'transform', low_stock:      'transform',
+  token:         'auth',     expires_in:    'auth',
+  sku:           'products', name:          'products',
+  price:         'products', brand_id:      'products', category:      'products',
+  stock:         'csv',      warehouse:     'csv',      reorder_point: 'csv',
+  badge:         'branch',   display_price: 'branch',
+  campaign_tag:  'branch',   urgent:        'branch',
 };
 
 // The Object.assign chain the executor runs to produce each final row
 const BUILD_STAGES = [
   { nodeId: 'products', label: 'Products API',  fields: ['sku', 'name', 'price', 'brand_id', 'category'] },
-  { nodeId: 'brand',    label: 'Brand Details', fields: ['brand_name', 'founded', 'country', 'warranty_years'] },
   { nodeId: 'csv',      label: 'Inventory CSV', fields: ['stock', 'warehouse', 'reorder_point'] },
-  { nodeId: 'transform',label: 'Transform',     fields: ['sale_price', 'display_name', 'in_stock', 'low_stock'] },
+  { nodeId: 'branch',   label: 'Branch Path',   fields: ['badge', 'display_price', 'campaign_tag', 'urgent'] },
 ];
 
 function fieldColor(col) {

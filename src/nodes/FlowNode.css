@@ -20,12 +20,17 @@
   animation: fn-pulse 1.4s ease-in-out infinite;
 }
 
-@keyframes fn-pulse {
-  0%, 100% { box-shadow: 0 0 6px color-mix(in srgb, var(--nc) 30%, transparent); }
-  50%       { box-shadow: 0 0 18px color-mix(in srgb, var(--nc) 70%, transparent); }
+/* Branch node gets a top border too to reinforce the decision identity */
+.fn--branch {
+  border-top: 2px solid var(--nc);
 }
 
-/* Header */
+@keyframes fn-pulse {
+  0%, 100% { box-shadow: 0 0 6px color-mix(in srgb, var(--nc) 30%, transparent); }
+  50%       { box-shadow: 0 0 20px color-mix(in srgb, var(--nc) 65%, transparent); }
+}
+
+/* ── Header ── */
 .fn__head {
   display: flex;
   align-items: center;
@@ -35,7 +40,6 @@
 }
 
 .fn__icon { font-size: 15px; flex-shrink: 0; }
-
 .fn__titles { flex: 1; min-width: 0; }
 
 .fn__label {
@@ -56,11 +60,7 @@
   text-overflow: ellipsis;
 }
 
-.fn__status {
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
+.fn__status { font-size: 13px; flex-shrink: 0; }
 .fn__status--idle    { color: #475569; }
 .fn__status--running { color: #fbbf24; animation: fn-spin 1s linear infinite; display: inline-block; }
 .fn__status--done    { color: #4ade80; }
@@ -71,37 +71,30 @@
   to   { transform: rotate(360deg); }
 }
 
-/* Type badge */
+/* ── Type badge ── */
 .fn__badge {
   position: absolute;
   top: 6px;
-  right: 30px;
+  right: 28px;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.6px;
   color: var(--nc);
-  opacity: 0.8;
+  opacity: 0.75;
 }
 
-/* Body */
+/* ── Body ── */
 .fn__body {
   padding: 8px 10px 10px;
-  min-height: 46px;
+  min-height: 50px;
   display: flex;
   align-items: center;
 }
 
-.fn__idle {
-  color: #475569;
-  font-style: italic;
-  font-size: 11px;
-}
+.fn__idle          { color: #475569; font-style: italic; font-size: 11px; }
+.fn__running-label { color: #fbbf24; font-size: 11px; }
 
-.fn__running-label {
-  color: #fbbf24;
-  font-size: 11px;
-}
-
+/* ── Stats ── */
 .fn__stats {
   display: flex;
   flex-direction: column;
@@ -115,6 +108,12 @@
   align-items: center;
 }
 
+.fn__stat--ruled {
+  border-top: 1px solid #334155;
+  padding-top: 3px;
+  margin-top: 1px;
+}
+
 .fn__stat-k {
   font-size: 10px;
   color: #64748b;
@@ -122,25 +121,44 @@
   letter-spacing: 0.4px;
 }
 
-.fn__stat-v {
-  font-size: 11px;
+.fn__path-a-label { color: #4ade80; }
+.fn__path-b-label { color: #fb923c; }
+
+.fn__stat-v           { font-size: 11px; font-weight: 600; color: #94a3b8; }
+.fn__stat-v--hi       { color: #38bdf8; }
+.fn__stat-v--zero     { color: #4ade80; }
+.fn__stat-v--green    { color: #4ade80; }
+.fn__stat-v--amber    { color: #fb923c; }
+.fn__stat-v--err      { color: #f87171; }
+
+/* ── Branch path labels (rendered next to output handles) ── */
+.fn__path-label {
+  position: absolute;
+  right: -70px;
+  font-size: 9px;
   font-weight: 600;
-  color: #94a3b8;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.7;
 }
 
-.fn__stat-v--hi   { color: #38bdf8; }
-.fn__stat-v--zero { color: #4ade80; }
+.fn__path-label--a { top: calc(32% - 7px); color: #4ade80; }
+.fn__path-label--b { top: calc(68% - 7px); color: #fb923c; }
 
-.fn__dedup {
-  color: #4ade80;
-  font-size: 10px;
-  margin-left: 4px;
-}
-
-/* Handles */
+/* ── Handles ── */
 .fn__handle {
   background: #475569 !important;
   border: 2px solid #1e293b !important;
   width: 10px !important;
   height: 10px !important;
+}
+
+.fn__handle--a {
+  background: #4ade80 !important;
+  border-color: #1e293b !important;
+}
+
+.fn__handle--b {
+  background: #fb923c !important;
+  border-color: #1e293b !important;
 }
