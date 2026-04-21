@@ -1,0 +1,225 @@
+.insp {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.insp--empty {
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.insp__empty-icon { font-size: 28px; }
+
+.insp__hint {
+  color: #64748b;
+  font-size: 12px;
+  text-align: center;
+}
+
+.insp__hint-sub {
+  color: #475569;
+  font-size: 11px;
+  text-align: center;
+  max-width: 220px;
+  line-height: 1.5;
+}
+
+.insp__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+}
+
+/* ── Meta chips ── */
+.insp__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.insp__meta-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: #0f172a;
+  border: 1px solid #334155;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.insp__meta-chip--green {
+  color: #4ade80;
+  border-color: color-mix(in srgb, #4ade80 30%, transparent);
+  background: color-mix(in srgb, #4ade80 8%, transparent);
+}
+
+/* ── Field origins legend ── */
+.insp__origins {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.insp__origins-label {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.insp__origin-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--oc);
+  background: color-mix(in srgb, var(--oc) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--oc) 25%, transparent);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.insp__origin-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--oc);
+}
+
+/* ── Object.assign build-up panel (Result node) ── */
+.insp__buildup {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 14px;
+  flex-shrink: 0;
+}
+
+.insp__buildup-title {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.insp__buildup-title code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #94a3b8;
+  background: #1e293b;
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+}
+
+.insp__assign-block {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.insp__assign-line {
+  padding-left: 4px;
+}
+
+.insp__assign-line--fn { margin-bottom: 2px; }
+
+.insp__assign-stage {
+  display: flex;
+  margin: 3px 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.insp__assign-source-bar {
+  width: 3px;
+  flex-shrink: 0;
+  margin-right: 0;
+  border-radius: 2px 0 0 2px;
+}
+
+.insp__assign-stage-inner {
+  flex: 1;
+  padding: 4px 8px;
+  background: #1e293b;
+}
+
+.insp__assign-node-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  font-family: -apple-system, sans-serif;
+}
+
+.insp__assign-fields {
+  color: #94a3b8;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.8;
+}
+
+.insp__kw    { color: #7c3aed; }
+.insp__punct { color: #64748b; }
+.insp__comment { color: #475569; font-style: italic; }
+.insp__field-name { color: #38bdf8; }
+.insp__colon { color: #64748b; }
+.insp__field-val { color: #a78bfa; }
+
+/* ── Data table ── */
+.insp__scroll {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #334155;
+  border-radius: 6px;
+}
+
+.insp__table {
+  border-collapse: collapse;
+  font-size: 11px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.insp__table th {
+  position: sticky;
+  top: 0;
+  background: #0f172a;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 7px 10px 5px;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.insp__table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #1e293b;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.insp__table tr:hover td {
+  filter: brightness(1.15);
+}
+
+.insp__null  { color: #475569; font-style: italic; }
+.insp__bool  { color: #a78bfa; font-weight: 600; }
+.insp__num   { color: #38bdf8; }

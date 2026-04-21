@@ -1,0 +1,182 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Top bar ── */
+.app__bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  height: 54px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.app__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.3px;
+}
+
+.app__subtitle {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.app__scenario {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #94a3b8;
+  background: #0f172a;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+}
+
+/* ── Stats chips ── */
+.app__stats {
+  display: flex;
+  gap: 16px;
+  margin-left: 8px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.chip__val {
+  font-weight: 700;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.chip__val--green { color: #4ade80; }
+.chip__val--blue  { color: #38bdf8; }
+
+/* ── Buttons ── */
+.app__actions { margin-left: auto; display: flex; gap: 8px; }
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn--run {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btn--run:hover:not(:disabled) { background: #2563eb; }
+
+.btn--reset {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.btn--reset:hover:not(:disabled) { background: #475569; }
+
+/* ── Body ── */
+.app__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Canvas ── */
+.app__canvas {
+  flex: 1;
+  position: relative;
+}
+
+/* ── Inspector ── */
+.app__inspector {
+  width: 360px;
+  background: #1e293b;
+  border-left: 1px solid #334155;
+  padding: 14px 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* ── Legend ── */
+.app__legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 10px;
+  color: #64748b;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.legend__title {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  color: #94a3b8;
+}
+
+.legend__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Annotation on canvas ── */
+.flow-annotation {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #64748b;
+  max-width: 180px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.flow-annotation strong { color: #4ade80; }
