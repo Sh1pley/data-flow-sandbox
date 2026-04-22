@@ -133,9 +133,10 @@ html, body, #root {
   background: #1e293b;
   border-left: 1px solid #334155;
   padding: 14px 16px;
-  overflow: hidden;
+  overflow-y: auto;       /* single scroll container for everything */
   display: flex;
   flex-direction: column;
+  gap: 12px;
   flex-shrink: 0;
 }
 

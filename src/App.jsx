@@ -9,7 +9,14 @@ import ReactFlow, {
 
 import FlowNode from './nodes/FlowNode.jsx';
 import Inspector from './components/Inspector.jsx';
+import GlobalsPanel from './components/GlobalsPanel.jsx';
 import { runFlow } from './engine/executor.js';
+
+// Pre-set globals — exist before the flow runs (env-var style)
+const INITIAL_GLOBALS = {
+  stock_threshold: { value: 75,            source: 'pre-set', status: 'ready', usedBy: ['Branch'], description: 'Min stock for healthy routing' },
+  campaign_name:   { value: 'Spring Sale', source: 'pre-set', status: 'ready', usedBy: ['Urgency Path'], description: 'Active campaign label' },
+};
 
 const nodeTypes = { flowNode: FlowNode };
 
@@ -95,10 +102,18 @@ const LEGEND = [
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
   const [edges, setEdges, onEdgesChange] = useEdgesState(INITIAL_EDGES);
-  const [running, setRunning]       = useState(false);
-  const [done, setDone]             = useState(false);
+  const [running, setRunning]         = useState(false);
+  const [done, setDone]               = useState(false);
   const [globalStats, setGlobalStats] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [globals, setGlobals]         = useState(INITIAL_GLOBALS);
+
+  const setGlobal = useCallback((key, meta) => {
+    setGlobals((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], ...meta },
+    }));
+  }, []);
 
   const updateNode = useCallback((id, partialData) => {
     setNodes((prev) =>
@@ -123,9 +138,10 @@ export default function App() {
       prev.map((n) => ({ ...n, data: { ...n.data, status: 'idle', stats: null, output: null } }))
     );
     setEdges(INITIAL_EDGES);
+    setGlobals(INITIAL_GLOBALS);
     setSelectedNode(null);
     await new Promise((r) => setTimeout(r, 300));
-    const stats = await runFlow(updateNode, updateEdge);
+    const stats = await runFlow(updateNode, updateEdge, setGlobal);
     setGlobalStats(stats);
     setRunning(false);
     setDone(true);
@@ -135,6 +151,7 @@ export default function App() {
     if (running) return;
     setNodes(INITIAL_NODES);
     setEdges(INITIAL_EDGES);
+    setGlobals(INITIAL_GLOBALS);
     setSelectedNode(null);
     setGlobalStats(null);
     setDone(false);
@@ -234,6 +251,7 @@ export default function App() {
         </div>
 
         <div className="app__inspector">
+          <GlobalsPanel globals={globals} />
           <Inspector node={selectedNode} />
         </div>
       </div>
