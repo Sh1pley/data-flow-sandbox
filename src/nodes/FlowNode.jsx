@@ -2,14 +2,11 @@ import { Handle, Position } from 'reactflow';
 import './FlowNode.css';
 
 const TYPE_CONFIG = {
-  auth:      { color: '#7c3aed', icon: '🔑', badge: 'AUTH'      },
-  api:       { color: '#2563eb', icon: '🌐', badge: 'API'       },
-  filter:    { color: '#d97706', icon: '⬇',  badge: 'FILTER'    },
-  csv:       { color: '#16a34a', icon: '📋', badge: 'CSV JOIN'  },
-  branch:    { color: '#f59e0b', icon: '◇',  badge: 'BRANCH'    },
-  transform: { color: '#0891b2', icon: '⚙',  badge: 'TRANSFORM' },
-  merge:     { color: '#8b5cf6', icon: '◈',  badge: 'MERGE'     },
-  result:    { color: '#475569', icon: '📦', badge: 'RESULT'    },
+  auth:       { color: '#7c3aed', icon: '🔑', badge: 'AUTH'        },
+  datasource: { color: '#1d4ed8', icon: '📡', badge: 'DATA SOURCE' },
+  extract:    { color: '#6d28d9', icon: '🔬', badge: 'EXTRACT'     },
+  fanout:     { color: '#0e7490', icon: '⤢',  badge: 'FAN-OUT'     },
+  preview:    { color: '#059669', icon: '▣',  badge: 'PREVIEW'     },
 };
 
 const STATUS_SYMBOL = { idle: '○', running: '◌', done: '✓', error: '✗' };
@@ -18,42 +15,75 @@ function NodeStats({ data }) {
   const s = data.stats ?? {};
   const t = data.nodeType;
 
-  if (t === 'branch' && s.pathARows !== undefined) {
+  if (t === 'datasource' && data.id !== 'ds_reviews' && s.responseKeys) {
     return (
       <div className="fn__stats">
         <div className="fn__stat">
-          <span className="fn__stat-k">in</span>
-          <span className="fn__stat-v">{s.inputRows} rows</span>
+          <span className="fn__stat-k">api calls</span>
+          <span className="fn__stat-v">{s.apiCalls}</span>
         </div>
         <div className="fn__stat">
-          <span className="fn__stat-k fn__path-a-label">path A</span>
-          <span className="fn__stat-v fn__stat-v--green">{s.pathARows} rows</span>
+          <span className="fn__stat-k">arrays</span>
+          <span className="fn__stat-v fn__stat-v--blue">{s.arrays}</span>
         </div>
         <div className="fn__stat">
-          <span className="fn__stat-k fn__path-b-label">path B</span>
-          <span className="fn__stat-v fn__stat-v--amber">{s.pathBRows} rows</span>
+          <span className="fn__stat-k">scalars</span>
+          <span className="fn__stat-v fn__stat-v--dim">{s.scalars}</span>
         </div>
       </div>
     );
   }
 
-  if (t === 'merge' && s.pathARows !== undefined) {
-    const balanced = s.pathARows + s.pathBRows === s.outputRows;
+  if (t === 'extract') {
     return (
       <div className="fn__stats">
         <div className="fn__stat">
-          <span className="fn__stat-k fn__path-a-label">from A</span>
-          <span className="fn__stat-v fn__stat-v--green">+{s.pathARows}</span>
+          <span className="fn__stat-k">collection_path</span>
+          <span className="fn__stat-v fn__stat-v--mono">"{s.collectionPath}"</span>
         </div>
         <div className="fn__stat">
-          <span className="fn__stat-k fn__path-b-label">from B</span>
-          <span className="fn__stat-v fn__stat-v--amber">+{s.pathBRows}</span>
+          <span className="fn__stat-k">rows out</span>
+          <span className="fn__stat-v fn__stat-v--blue">{s.outputRows}</span>
+        </div>
+        {s.crossJoinNote && (
+          <div className="fn__stat">
+            <span className="fn__stat-k fn__stat-k--purple">cross-join</span>
+            <span className="fn__stat-v fn__stat-v--purple">{s.crossJoinNote}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (t === 'fanout' && s.fanoutCalls !== undefined) {
+    return (
+      <div className="fn__stats">
+        <div className="fn__stat">
+          <span className="fn__stat-k">fan-out calls</span>
+          <span className="fn__stat-v fn__stat-v--blue">{s.fanoutCalls}</span>
+        </div>
+        <div className="fn__stat">
+          <span className="fn__stat-k">fields added</span>
+          <span className="fn__stat-v fn__stat-v--green">+{s.fieldsAdded}</span>
         </div>
         <div className="fn__stat fn__stat--ruled">
-          <span className="fn__stat-k">total</span>
-          <span className={`fn__stat-v ${balanced ? 'fn__stat-v--hi' : 'fn__stat-v--err'}`}>
-            {s.outputRows} {balanced ? '✓' : '✗'}
-          </span>
+          <span className="fn__stat-k">rows out</span>
+          <span className="fn__stat-v fn__stat-v--blue">{s.outputRows}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (t === 'preview') {
+    return (
+      <div className="fn__stats">
+        <div className="fn__stat">
+          <span className="fn__stat-k">rows</span>
+          <span className="fn__stat-v fn__stat-v--green">{s.outputRows}</span>
+        </div>
+        <div className="fn__stat">
+          <span className="fn__stat-k">fields</span>
+          <span className="fn__stat-v fn__stat-v--green">{s.fieldCount}</span>
         </div>
       </div>
     );
@@ -61,22 +91,16 @@ function NodeStats({ data }) {
 
   return (
     <div className="fn__stats">
-      {s.inputRows !== undefined && (
+      {s.outputRows !== undefined && (
         <div className="fn__stat">
-          <span className="fn__stat-k">in</span>
-          <span className="fn__stat-v">{s.inputRows} rows</span>
+          <span className="fn__stat-k">out</span>
+          <span className="fn__stat-v fn__stat-v--blue">{s.outputRows} rows</span>
         </div>
       )}
-      <div className="fn__stat">
-        <span className="fn__stat-k">out</span>
-        <span className="fn__stat-v fn__stat-v--hi">{s.outputRows} rows</span>
-      </div>
       {s.apiCalls !== undefined && (
         <div className="fn__stat">
           <span className="fn__stat-k">api calls</span>
-          <span className={`fn__stat-v ${s.apiCalls === 0 ? 'fn__stat-v--zero' : ''}`}>
-            {s.apiCalls}
-          </span>
+          <span className="fn__stat-v">{s.apiCalls}</span>
         </div>
       )}
     </div>
@@ -84,28 +108,19 @@ function NodeStats({ data }) {
 }
 
 export default function FlowNode({ data, selected }) {
-  const cfg = TYPE_CONFIG[data.nodeType] ?? TYPE_CONFIG.api;
+  const cfg = TYPE_CONFIG[data.nodeType] ?? TYPE_CONFIG.datasource;
   const isDone    = data.status === 'done';
   const isRunning = data.status === 'running';
-  const isBranch  = data.nodeType === 'branch';
-  const isMerge   = data.nodeType === 'merge';
 
   return (
     <div
-      className={`fn ${isRunning ? 'fn--running' : ''} ${selected ? 'fn--selected' : ''} ${isBranch ? 'fn--branch' : ''}`}
+      className={`fn ${isRunning ? 'fn--running' : ''} ${selected ? 'fn--selected' : ''}`}
       style={{ '--nc': cfg.color }}
     >
-      {/* Input handles */}
-      {data.nodeType === 'auth' ? null : isMerge ? (
-        <>
-          <Handle type="target" position={Position.Left} id="from-a" className="fn__handle fn__handle--a" style={{ top: '32%' }} />
-          <Handle type="target" position={Position.Left} id="from-b" className="fn__handle fn__handle--b" style={{ top: '68%' }} />
-        </>
-      ) : (
+      {data.nodeType !== 'auth' && (
         <Handle type="target" position={Position.Left} className="fn__handle" />
       )}
 
-      {/* Header */}
       <div className="fn__head">
         <span className="fn__icon">{cfg.icon}</span>
         <div className="fn__titles">
@@ -119,28 +134,13 @@ export default function FlowNode({ data, selected }) {
 
       <div className="fn__badge">{cfg.badge}</div>
 
-      {/* Body */}
       <div className="fn__body">
         {!isDone && !isRunning && <span className="fn__idle">waiting</span>}
         {isRunning && <span className="fn__running-label">executing…</span>}
         {isDone && <NodeStats data={data} />}
       </div>
 
-      {/* Branch path labels next to handles */}
-      {isBranch && isDone && (
-        <>
-          <span className="fn__path-label fn__path-label--a">stock ≥ 75</span>
-          <span className="fn__path-label fn__path-label--b">stock &lt; 75</span>
-        </>
-      )}
-
-      {/* Output handles */}
-      {data.nodeType === 'result' ? null : isBranch ? (
-        <>
-          <Handle type="source" position={Position.Right} id="path-a" className="fn__handle fn__handle--a" style={{ top: '32%' }} />
-          <Handle type="source" position={Position.Right} id="path-b" className="fn__handle fn__handle--b" style={{ top: '68%' }} />
-        </>
-      ) : (
+      {data.nodeType !== 'preview' && (
         <Handle type="source" position={Position.Right} className="fn__handle" />
       )}
     </div>

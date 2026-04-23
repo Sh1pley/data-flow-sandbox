@@ -126,10 +126,16 @@
 
 .fn__stat-v           { font-size: 11px; font-weight: 600; color: #94a3b8; }
 .fn__stat-v--hi       { color: #38bdf8; }
+.fn__stat-v--blue     { color: #38bdf8; }
 .fn__stat-v--zero     { color: #4ade80; }
 .fn__stat-v--green    { color: #4ade80; }
 .fn__stat-v--amber    { color: #fb923c; }
+.fn__stat-v--purple   { color: #a78bfa; }
+.fn__stat-v--dim      { color: #64748b; }
+.fn__stat-v--mono     { font-family: 'SF Mono', monospace; font-size: 10px; color: #a78bfa; }
 .fn__stat-v--err      { color: #f87171; }
+.fn__stat-k--purple   { color: #a78bfa; }
+.fn__arrow            { color: #475569; margin: 0 2px; }
 
 /* ── Branch path labels (rendered next to output handles) ── */
 .fn__path-label {

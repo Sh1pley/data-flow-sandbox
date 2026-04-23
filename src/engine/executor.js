@@ -1,4 +1,9 @@
-import { mockFetchAuthToken, mockFetchProducts, csvLookupInventory } from '../mocks/sources.js';
+import {
+  mockFetchAuthToken,
+  mockFetchProducts,
+  mockFetchInventory,
+  mockFetchReviews,
+} from '../mocks/sources.js';
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -17,214 +22,154 @@ const glow = (updateEdge, id, color = '#38bdf8') =>
   updateEdge(id, { animated: true, style: { stroke: color, strokeWidth: 2 } });
 
 /**
- * runFlow — executes the demo pipeline.
+ * Three independent API calls — no fan-out.
+ * Each API returns its own collection. Each Extract node defines the schema.
+ * The Preview node joins all three collections on sku via Object.assign,
+ * producing one unified dataset.
  *
- * updateNode(id, partial)   — patches a node's React state
- * updateEdge(id, partial)   — patches an edge's React state
- * setGlobal(key, meta)      — adds/updates a key in the global scope panel
- *
- * Two kinds of globals are demonstrated:
- *   - Pre-set (env-var style): stock_threshold, campaign_name — exist before the flow runs
- *   - Promoted at runtime: auth_token (from Auth), max_price (from Products API)
- *
- * The Branch reads $stock_threshold.
- * The Urgency transform reads $campaign_name.
- * Every API node reads $auth_token.
- * This all happens without those values being in the carry-forward chain.
+ * Products API  → 1 call → Extract → [{sku, name, price}]
+ * Inventory API → 1 call → Extract → [{sku, stock, warehouse, reorder_point}]
+ * Reviews API   → 1 call → Extract → [{sku, rating, review_count, featured}]
+ *                                         ↓
+ *                              Preview: join on sku
+ *                              [{sku, name, price, stock, warehouse, reorder_point, rating, review_count, featured}]
  */
-export async function runFlow(updateNode, updateEdge, setGlobal) {
-  const stats = { totalApiCalls: 0, pathARows: 0, pathBRows: 0, finalRows: 0 };
+export async function runFlow(updateNode, updateEdge) {
+  const stats = { totalApiCalls: 0, finalRows: 0, finalFields: 0 };
 
-  // ── The globals store lives here in the executor ───────────────────────────
-  // Pre-set globals are seeded before any node runs (env-var style).
-  // They are already visible in the UI via INITIAL_GLOBALS in App.jsx.
-  const globals = {
-    stock_threshold: 75,
-    campaign_name: 'Spring Sale',
-  };
-
-  const promote = (key, value, source, usedBy = []) => {
-    globals[key] = value;
-    setGlobal(key, { value, source, status: 'active', usedBy });
-  };
-
-  const markReading = (key, usedBy) => {
-    setGlobal(key, { value: globals[key], source: undefined, status: 'reading', usedBy });
-  };
-
-  // ─── 1. Auth Token — promotes $auth_token to globals ─────────────────────
+  // ─── 1. Auth ──────────────────────────────────────────────────────────────
   updateNode('auth', { status: 'running' });
   await pause(200);
-  const authResult = await mockFetchAuthToken();
+  const { token } = await mockFetchAuthToken();
   stats.totalApiCalls += 1;
-
-  promote('auth_token', authResult.token.slice(0, 22) + '…', 'OAuth Token', ['Products API', 'any future API node']);
-
   updateNode('auth', {
     status: 'done',
-    output: [{ token: authResult.token.slice(0, 28) + '…', expires_in: authResult.expires_in }],
-    stats: { outputRows: 1, apiCalls: 1 },
-    globalsWrite: ['auth_token'],
+    output: [{ token: token.slice(0, 30) + '…', expires_in: 3600 }],
+    stats: { apiCalls: 1 },
   });
-  stampEdge(updateEdge, 'auth-products', 'auth token', '#7c3aed');
-  glow(updateEdge, 'auth-products', '#7c3aed');
-  await pause(500);
+  stampEdge(updateEdge, 'auth-ds_products',  'auth token', '#7c3aed');
+  stampEdge(updateEdge, 'auth-ds_inventory', 'auth token', '#7c3aed');
+  stampEdge(updateEdge, 'auth-ds_reviews',   'auth token', '#7c3aed');
+  glow(updateEdge, 'auth-ds_products',  '#7c3aed');
+  glow(updateEdge, 'auth-ds_inventory', '#7c3aed');
+  glow(updateEdge, 'auth-ds_reviews',   '#7c3aed');
+  await pause(600);
 
-  // ─── 2. Products API — reads $auth_token, promotes $max_price ────────────
-  markReading('auth_token', ['Products API']);
-  updateNode('products', { status: 'running' });
-  const products = await mockFetchProducts(authResult.token);
+  // ─── 2. Products API + Extract ────────────────────────────────────────────
+  updateNode('ds_products', { status: 'running' });
+  const rawProducts = await mockFetchProducts(token);
   stats.totalApiCalls += 1;
-
-  const maxPrice = Math.max(...products.map((p) => p.price));
-  promote('max_price', maxPrice, 'Products API', []);
-  promote('total_in_catalog', products.length, 'Products API', ['informational']);
-
-  updateNode('products', {
-    status: 'done',
-    output: products,
-    stats: { outputRows: products.length, apiCalls: 1 },
-    globalsRead:  ['auth_token'],
-    globalsWrite: ['max_price', 'total_in_catalog'],
+  updateNode('ds_products', {
+    status: 'done', rawResponse: rawProducts, output: null,
+    stats: { apiCalls: 1, responseKeys: Object.keys(rawProducts).join(', ') },
   });
-  stampEdge(updateEdge, 'auth-products', 'auth token', '#7c3aed');
-  stampEdge(updateEdge, 'products-filter', `${products.length} rows · 5 fields`);
-  glow(updateEdge, 'products-filter');
-  await pause(500);
-
-  // ─── 3. Price Filter ──────────────────────────────────────────────────────
-  updateNode('filter', { status: 'running' });
-  await pause(350);
-  const filtered = products.filter((p) => p.price >= 75);
-  updateNode('filter', {
-    status: 'done',
-    output: filtered,
-    stats: { inputRows: products.length, outputRows: filtered.length },
-  });
-  stampEdge(updateEdge, 'products-filter', `${products.length} rows · 5 fields`);
-  stampEdge(updateEdge, 'filter-csv', `${filtered.length} rows · 5 fields`);
-  glow(updateEdge, 'filter-csv');
-  await pause(500);
-
-  // ─── 4. CSV Inventory Join ────────────────────────────────────────────────
-  updateNode('csv', { status: 'running' });
-  await pause(300);
-  const withInventory = filtered.map((item) =>
-    Object.assign({}, item, csvLookupInventory(item.sku))
-  );
-  updateNode('csv', {
-    status: 'done',
-    output: withInventory,
-    stats: { inputRows: filtered.length, outputRows: withInventory.length, apiCalls: 0 },
-  });
-  stampEdge(updateEdge, 'filter-csv', `${filtered.length} rows · 5 fields`);
-  stampEdge(updateEdge, 'csv-branch', `${withInventory.length} rows · 8 fields`);
-  glow(updateEdge, 'csv-branch');
-  await pause(500);
-
-  // ─── 5. Branch — reads $stock_threshold from globals ─────────────────────
-  //
-  // The branch condition is NOT hardcoded — it reads from $stock_threshold.
-  // Changing that global (e.g., from a business-rules API) changes routing
-  // without touching the graph.
-  //
-  markReading('stock_threshold', ['Branch']);
-  updateNode('branch', { status: 'running' });
-  await pause(450);
-
-  const threshold = globals.stock_threshold;           // ← reads the global
-  const pathAItems = withInventory.filter((i) => i.stock >= threshold);
-  const pathBItems = withInventory.filter((i) => i.stock < threshold);
-
-  updateNode('branch', {
-    status: 'done',
-    output: withInventory,
-    stats: { inputRows: withInventory.length, pathARows: pathAItems.length, pathBRows: pathBItems.length },
-    globalsRead: ['stock_threshold'],
-  });
-  stampEdge(updateEdge, 'csv-branch', `${withInventory.length} rows · 8 fields`);
-  stampEdge(updateEdge, 'branch-pathA', `${pathAItems.length} rows`, '#4ade80');
-  stampEdge(updateEdge, 'branch-pathB', `${pathBItems.length} rows`, '#fb923c');
-  glow(updateEdge, 'branch-pathA', '#4ade80');
-  glow(updateEdge, 'branch-pathB', '#fb923c');
-  await pause(500);
-
-  // ─── 6. Premium Path — no global reads ───────────────────────────────────
-  updateNode('pathA', { status: 'running' });
-  await pause(350);
-  const pathAResult = pathAItems.map((item) =>
-    Object.assign({}, item, {
-      badge: 'In Stock',
-      display_price: item.price,
-      campaign_tag: 'premium',
-      urgent: false,
-    })
-  );
-  updateNode('pathA', {
-    status: 'done',
-    output: pathAResult,
-    stats: { inputRows: pathAItems.length, outputRows: pathAResult.length },
-  });
-
-  // ─── 7. Urgency Path — reads $campaign_name from globals ─────────────────
-  //
-  // The badge text uses $campaign_name — a pre-set global that could be
-  // driven by a CMS or business-rules API without changing this node.
-  //
-  markReading('campaign_name', ['Urgency Path']);
-  updateNode('pathB', { status: 'running' });
-  await pause(350);
-  const campaignName = globals.campaign_name;           // ← reads the global
-  const pathBResult = pathBItems.map((item) =>
-    Object.assign({}, item, {
-      badge: `[${campaignName}] Only ${item.stock} left!`,
-      display_price: Math.round(item.price * 0.9 * 100) / 100,
-      campaign_tag: 'clearance',
-      urgent: true,
-    })
-  );
-  updateNode('pathB', {
-    status: 'done',
-    output: pathBResult,
-    stats: { inputRows: pathBItems.length, outputRows: pathBResult.length },
-    globalsRead: ['campaign_name'],
-  });
-
-  stampEdge(updateEdge, 'branch-pathA', `${pathAResult.length} rows`, '#4ade80');
-  stampEdge(updateEdge, 'branch-pathB', `${pathBResult.length} rows`, '#fb923c');
-  stampEdge(updateEdge, 'pathA-merge', `${pathAResult.length} rows`, '#4ade80');
-  stampEdge(updateEdge, 'pathB-merge', `${pathBResult.length} rows`, '#fb923c');
-  glow(updateEdge, 'pathA-merge', '#4ade80');
-  glow(updateEdge, 'pathB-merge', '#fb923c');
-  await pause(500);
-
-  // ─── 8. Merge ────────────────────────────────────────────────────────────
-  updateNode('merge', { status: 'running' });
+  stampEdge(updateEdge, 'auth-ds_products', 'auth token', '#7c3aed');
+  stampEdge(updateEdge, 'ds_products-ex_products', 'raw response');
+  glow(updateEdge, 'ds_products-ex_products');
   await pause(400);
-  const merged = [...pathAResult, ...pathBResult];
-  stats.pathARows  = pathAResult.length;
-  stats.pathBRows  = pathBResult.length;
-  stats.finalRows  = merged.length;
 
-  updateNode('merge', {
-    status: 'done',
-    output: merged,
-    stats: { pathARows: pathAResult.length, pathBRows: pathBResult.length, outputRows: merged.length },
+  updateNode('ex_products', { status: 'running' });
+  await pause(300);
+  const productsCollection = rawProducts.products.map(({ sku, name, price }) =>
+    ({ sku, name, price })
+  );
+  updateNode('ex_products', {
+    status: 'done', output: productsCollection,
+    stats: { collectionPath: 'products', outputRows: productsCollection.length, fields: 'sku, name, price' },
   });
-  stampEdge(updateEdge, 'pathA-merge', `${pathAResult.length} rows`, '#4ade80');
-  stampEdge(updateEdge, 'pathB-merge', `${pathBResult.length} rows`, '#fb923c');
-  stampEdge(updateEdge, 'merge-result', `${merged.length} rows · 12 fields`);
-  glow(updateEdge, 'merge-result');
+  stampEdge(updateEdge, 'ds_products-ex_products', 'raw response');
+  stampEdge(updateEdge, 'ex_products-preview', `${productsCollection.length} rows · 3 fields`);
+  glow(updateEdge, 'ex_products-preview');
   await pause(500);
 
-  // ─── 9. Result ────────────────────────────────────────────────────────────
-  updateNode('result', { status: 'running' });
+  // ─── 3. Inventory API + Extract ───────────────────────────────────────────
+  updateNode('ds_inventory', { status: 'running' });
+  const rawInventory = await mockFetchInventory(token);
+  stats.totalApiCalls += 1;
+  updateNode('ds_inventory', {
+    status: 'done', rawResponse: rawInventory, output: null,
+    stats: { apiCalls: 1, responseKeys: Object.keys(rawInventory).join(', ') },
+  });
+  stampEdge(updateEdge, 'auth-ds_inventory', 'auth token', '#7c3aed');
+  stampEdge(updateEdge, 'ds_inventory-ex_inventory', 'raw response');
+  glow(updateEdge, 'ds_inventory-ex_inventory');
+  await pause(400);
+
+  updateNode('ex_inventory', { status: 'running' });
   await pause(300);
-  updateNode('result', {
+  const inventoryCollection = rawInventory.inventory.map(({ sku, stock, warehouse, reorder_point }) =>
+    ({ sku, stock, warehouse, reorder_point })
+  );
+  updateNode('ex_inventory', {
+    status: 'done', output: inventoryCollection,
+    stats: { collectionPath: 'inventory', outputRows: inventoryCollection.length, fields: 'sku, stock, warehouse, reorder_point' },
+  });
+  stampEdge(updateEdge, 'ds_inventory-ex_inventory', 'raw response');
+  stampEdge(updateEdge, 'ex_inventory-preview', `${inventoryCollection.length} rows · 4 fields`);
+  glow(updateEdge, 'ex_inventory-preview');
+  await pause(500);
+
+  // ─── 4. Reviews API + Extract ─────────────────────────────────────────────
+  updateNode('ds_reviews', { status: 'running' });
+  const rawReviews = await mockFetchReviews(token);
+  stats.totalApiCalls += 1;
+  updateNode('ds_reviews', {
+    status: 'done', rawResponse: rawReviews, output: null,
+    stats: { apiCalls: 1, responseKeys: Object.keys(rawReviews).join(', ') },
+  });
+  stampEdge(updateEdge, 'auth-ds_reviews', 'auth token', '#7c3aed');
+  stampEdge(updateEdge, 'ds_reviews-ex_reviews', 'raw response');
+  glow(updateEdge, 'ds_reviews-ex_reviews');
+  await pause(400);
+
+  updateNode('ex_reviews', { status: 'running' });
+  await pause(300);
+  const reviewsCollection = rawReviews.reviews.map(({ sku, rating, review_count, featured }) =>
+    ({ sku, rating, review_count, featured })
+  );
+  updateNode('ex_reviews', {
+    status: 'done', output: reviewsCollection,
+    stats: { collectionPath: 'reviews', outputRows: reviewsCollection.length, fields: 'sku, rating, review_count, featured' },
+  });
+  stampEdge(updateEdge, 'ds_reviews-ex_reviews', 'raw response');
+  stampEdge(updateEdge, 'ex_reviews-preview', `${reviewsCollection.length} rows · 4 fields`);
+  glow(updateEdge, 'ex_reviews-preview');
+  await pause(500);
+
+  // ─── 5. Preview — join all three collections on sku ───────────────────────
+  //
+  // Three independent collections, each with the same set of sku keys.
+  // Object.assign carry-forward merges them into one unified row per sku.
+  // No fan-out — each API was called exactly once.
+  //
+  updateNode('preview', { status: 'running' });
+  await pause(400);
+
+  const inventoryBySku = Object.fromEntries(inventoryCollection.map((i) => [i.sku, i]));
+  const reviewsBySku   = Object.fromEntries(reviewsCollection.map((r) => [r.sku, r]));
+
+  const joined = productsCollection.map((product) =>
+    Object.assign(
+      {},
+      product,
+      inventoryBySku[product.sku] ?? {},
+      reviewsBySku[product.sku]   ?? {},
+    )
+  );
+
+  stats.finalRows   = joined.length;
+  stats.finalFields = joined.length > 0 ? Object.keys(joined[0]).length : 0;
+
+  updateNode('preview', {
     status: 'done',
-    description: `${merged.length} rows · 12 fields`,
-    output: merged,
-    stats: { outputRows: merged.length },
+    description: `${stats.finalRows} rows · ${stats.finalFields} fields`,
+    output: joined,
+    stats: {
+      outputRows:   stats.finalRows,
+      fieldCount:   stats.finalFields,
+      sources:      3,
+      joinKey:      'sku',
+    },
   });
 
   return stats;
