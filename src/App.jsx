@@ -7,38 +7,86 @@ import ReactFlow, {
 import FlowNode from './nodes/FlowNode.jsx';
 import Inspector from './components/Inspector.jsx';
 import { runFlow } from './engine/executor.js';
+import {
+  MOCK_AUTH, MOCK_PRODUCTS, MOCK_INVENTORY, MOCK_REVIEWS,
+} from './mocks/sources.js';
 
 const nodeTypes = { flowNode: FlowNode };
 
-const N = (id, nodeType, label, description, x, y) => ({
+// ─── Graph helpers ─────────────────────────────────────────────────────────
+
+function detectPaths(rawResponse) {
+  if (!rawResponse || typeof rawResponse !== 'object') return [];
+  return Object.entries(rawResponse).map(([path, value]) => ({
+    path,
+    type:   Array.isArray(value) ? 'array' : 'scalar',
+    length: Array.isArray(value) ? value.length : undefined,
+  }));
+}
+
+function detectCommonKeys(collections) {
+  const filled = collections.filter((c) => Array.isArray(c) && c.length > 0);
+  if (filled.length === 0) return [];
+  const keySets = filled.map((c) => new Set(Object.keys(c[0])));
+  return [...keySets[0]].filter((k) => keySets.every((s) => s.has(k))).sort();
+}
+
+// ─── Node factory ──────────────────────────────────────────────────────────
+
+const N = (id, nodeType, label, description, x, y, extra = {}) => ({
   id, type: 'flowNode', position: { x, y },
-  data: { nodeType, label, description, status: 'idle', stats: null, output: null, rawResponse: null },
+  data: {
+    id, nodeType, label, description,
+    status: 'idle', stats: null, output: null, rawResponse: null, error: null,
+    config: null,
+    ...extra,
+  },
 });
 
-// Three independent API calls → three separate Extract nodes → one Preview.
-// Each API makes exactly one call. No fan-out.
-// Preview joins all three collections on sku via Object.assign.
+// ─── Initial graph ─────────────────────────────────────────────────────────
 //
-//              Auth
-//           /    |    \
+//         Auth API (getter)
+//               ↓
+//         Auth Extract  → [{token}]
+//        /      |      \
 //  Products  Inventory  Reviews
-//     DS        DS        DS
+//    API        API       API
 //      ↓         ↓         ↓
 //   Extract   Extract   Extract
 //      ↓         ↓         ↓
 //      └─────────┴─────────┘
-//               Preview
-//          (joined on sku)
+//               Exit (join on sku)
+//
 
 const INITIAL_NODES = [
-  N('auth',         'auth',       'OAuth Token',     'Fetch bearer token',              400,  30),
-  N('ds_products',  'datasource', 'Products API',    'GET /api/products',               100, 180),
-  N('ex_products',  'extract',    'Extract',         'collection_path: "products"',     100, 350),
-  N('ds_inventory', 'datasource', 'Inventory API',   'GET /api/inventory',              400, 180),
-  N('ex_inventory', 'extract',    'Extract',         'collection_path: "inventory"',    400, 350),
-  N('ds_reviews',   'datasource', 'Reviews API',     'GET /api/reviews',                700, 180),
-  N('ex_reviews',   'extract',    'Extract',         'collection_path: "reviews"',      700, 350),
-  N('preview',      'preview',    'Preview',         'Joined on sku',                   400, 520),
+  N('auth_api', 'datasource', 'Auth API', 'oauth token endpoint', 390, 20, {
+    isHead: true,
+    config: { mode: 'paste', url: '', pasteJson: JSON.stringify(MOCK_AUTH, null, 2) },
+  }),
+  N('auth_ex', 'extract', 'Auth Extract', 'token → collection', 390, 180, {
+    config: { collectionPath: 'token' },
+  }),
+  N('ds_products', 'datasource', 'Products API', 'product catalog', 80, 340, {
+    config: { mode: 'paste', url: '', pasteJson: JSON.stringify(MOCK_PRODUCTS, null, 2) },
+  }),
+  N('ds_inventory', 'datasource', 'Inventory API', 'stock levels', 390, 340, {
+    config: { mode: 'paste', url: '', pasteJson: JSON.stringify(MOCK_INVENTORY, null, 2) },
+  }),
+  N('ds_reviews', 'datasource', 'Reviews API', 'review data', 700, 340, {
+    config: { mode: 'paste', url: '', pasteJson: JSON.stringify(MOCK_REVIEWS, null, 2) },
+  }),
+  N('ex_products', 'extract', 'Products Extract', 'collection selector', 80, 500, {
+    config: { collectionPath: 'products' },
+  }),
+  N('ex_inventory', 'extract', 'Inv Extract', 'collection selector', 390, 500, {
+    config: { collectionPath: 'inventory' },
+  }),
+  N('ex_reviews', 'extract', 'Reviews Extract', 'collection selector', 700, 500, {
+    config: { collectionPath: 'reviews' },
+  }),
+  N('exit', 'exit', 'Exit', 'join & output', 390, 660, {
+    config: { joinKey: 'sku' },
+  }),
 ];
 
 const E = (id, source, target, extra = {}) => ({
@@ -50,30 +98,26 @@ const E = (id, source, target, extra = {}) => ({
   ...extra,
 });
 
-const AUTH_EDGE = (id, target) => E(id, 'auth', target, {
-  style: { stroke: '#7c3aed', strokeWidth: 1.5, strokeDasharray: '5 4' },
-  labelStyle: { fill: '#7c3aed', fontSize: 9 },
-  label: 'auth token',
-});
-
 const INITIAL_EDGES = [
-  AUTH_EDGE('auth-ds_products',  'ds_products'),
-  AUTH_EDGE('auth-ds_inventory', 'ds_inventory'),
-  AUTH_EDGE('auth-ds_reviews',   'ds_reviews'),
-  E('ds_products-ex_products',   'ds_products',  'ex_products',  { label: 'raw response' }),
-  E('ds_inventory-ex_inventory', 'ds_inventory', 'ex_inventory', { label: 'raw response' }),
-  E('ds_reviews-ex_reviews',     'ds_reviews',   'ex_reviews',   { label: 'raw response' }),
-  E('ex_products-preview',       'ex_products',  'preview'),
-  E('ex_inventory-preview',      'ex_inventory', 'preview'),
-  E('ex_reviews-preview',        'ex_reviews',   'preview'),
+  E('auth_api-auth_ex',          'auth_api',    'auth_ex'),
+  E('auth_ex-ds_products',       'auth_ex',     'ds_products'),
+  E('auth_ex-ds_inventory',      'auth_ex',     'ds_inventory'),
+  E('auth_ex-ds_reviews',        'auth_ex',     'ds_reviews'),
+  E('ds_products-ex_products',   'ds_products', 'ex_products',  { label: 'raw response' }),
+  E('ds_inventory-ex_inventory', 'ds_inventory','ex_inventory', { label: 'raw response' }),
+  E('ds_reviews-ex_reviews',     'ds_reviews',  'ex_reviews',   { label: 'raw response' }),
+  E('ex_products-exit',          'ex_products', 'exit'),
+  E('ex_inventory-exit',         'ex_inventory','exit'),
+  E('ex_reviews-exit',           'ex_reviews',  'exit'),
 ];
 
 const LEGEND = [
-  { color: '#7c3aed', label: 'Auth — singleton token'                           },
-  { color: '#1d4ed8', label: 'Data Source — one call, raw envelope'             },
-  { color: '#6d28d9', label: 'Extract — collection_path, typed collection out'  },
-  { color: '#059669', label: 'Preview — three collections joined on sku'        },
+  { color: '#1d4ed8', label: 'Data Source — getter, raw response envelope' },
+  { color: '#6d28d9', label: 'Extract — select collection_path, all fields' },
+  { color: '#0d9488', label: 'Exit — join N collections on a key' },
 ];
+
+// ─── App ───────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(INITIAL_NODES);
@@ -84,7 +128,9 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState(null);
 
   const updateNode = useCallback((id, partial) => {
-    setNodes((prev) => prev.map((n) => n.id === id ? { ...n, data: { ...n.data, ...partial } } : n));
+    setNodes((prev) => prev.map((n) =>
+      n.id === id ? { ...n, data: { ...n.data, ...partial } } : n
+    ));
     setSelectedNode((sel) => {
       if (!sel || sel.id !== id) return sel;
       return { ...sel, data: { ...sel.data, ...partial } };
@@ -98,32 +144,61 @@ export default function App() {
   const handleRun = async () => {
     if (running) return;
     setRunning(true); setDone(false); setGlobalStats(null);
-    setNodes((prev) => prev.map((n) => ({
-      ...n, data: { ...n.data, status: 'idle', stats: null, output: null, rawResponse: null },
-    })));
+
+    // Reset execution state, preserve config
+    const resetNodes = nodes.map((n) => ({
+      ...n,
+      data: { ...n.data, status: 'idle', stats: null, output: null, rawResponse: null, error: null },
+    }));
+    setNodes(resetNodes);
     setEdges(INITIAL_EDGES);
     setSelectedNode(null);
     await new Promise((r) => setTimeout(r, 300));
-    const s = await runFlow(updateNode, updateEdge);
+
+    const s = await runFlow(resetNodes, INITIAL_EDGES, updateNode, updateEdge);
     setGlobalStats(s);
     setRunning(false); setDone(true);
   };
 
   const handleReset = () => {
     if (running) return;
-    setNodes(INITIAL_NODES); setEdges(INITIAL_EDGES);
+    // Preserve user config, only clear execution state
+    setNodes((prev) => prev.map((n) => ({
+      ...n,
+      data: { ...n.data, status: 'idle', stats: null, output: null, rawResponse: null, error: null },
+    })));
+    setEdges(INITIAL_EDGES);
     setSelectedNode(null); setGlobalStats(null); setDone(false);
   };
+
+  // ─── Compute available paths/keys for the selected node ──────────────────
+
+  let availablePaths    = [];
+  let availableJoinKeys = [];
+
+  if (selectedNode?.data.nodeType === 'extract') {
+    const upEdge  = edges.find((e) => e.target === selectedNode.id);
+    const upNode  = upEdge ? nodes.find((n) => n.id === upEdge.source) : null;
+    if (upNode?.data.rawResponse) {
+      availablePaths = detectPaths(upNode.data.rawResponse);
+    }
+  }
+
+  if (selectedNode?.data.nodeType === 'exit') {
+    const upCollections = edges
+      .filter((e) => e.target === selectedNode.id)
+      .map((e) => nodes.find((n) => n.id === e.source)?.data.output)
+      .filter(Boolean);
+    availableJoinKeys = detectCommonKeys(upCollections);
+  }
 
   return (
     <div className="app">
       <div className="app__bar">
         <div>
           <div className="app__title">Data Flow Sandbox</div>
-          <div className="app__subtitle">Collection model · Phase 1–5 POC</div>
+          <div className="app__subtitle">Explicit architecture · getter → extract → exit</div>
         </div>
-
-        <span className="app__scenario">3 independent APIs · collected into one dataset</span>
 
         {globalStats && (
           <div className="app__stats">
@@ -132,9 +207,9 @@ export default function App() {
               <span className="chip__val chip__val--blue">{globalStats.totalApiCalls}</span>
             </div>
             <div className="chip">
-              <span>Final dataset</span>
+              <span>Output</span>
               <span className="chip__val chip__val--green">
-                {globalStats.finalRows} rows · {globalStats.finalFields} fields
+                {globalStats.outputRows} rows · {globalStats.outputFields} fields
               </span>
             </div>
           </div>
@@ -172,17 +247,17 @@ export default function App() {
                 <span>{label}</span>
               </div>
             ))}
-            <div style={{ marginTop: 8, borderTop: '1px solid #334155', paddingTop: 6 }}>
-              <div className="legend__row">
-                <div style={{ width: 24, height: 2, borderTop: '2px dashed #7c3aed', flexShrink: 0 }} />
-                <span>Auth (not carry-forward)</span>
-              </div>
-            </div>
           </div>
         </div>
 
         <div className="app__inspector">
-          <Inspector node={selectedNode} />
+          <Inspector
+            node={selectedNode}
+            running={running}
+            availablePaths={availablePaths}
+            availableJoinKeys={availableJoinKeys}
+            onConfigChange={(nodeId, cfg) => updateNode(nodeId, { config: cfg })}
+          />
         </div>
       </div>
     </div>

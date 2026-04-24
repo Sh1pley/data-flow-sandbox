@@ -337,6 +337,187 @@
 .carry-bar__row--active .carry-bar__label  { color: #94a3b8; }
 .carry-bar__row--active .carry-bar__fields { color: #94a3b8; }
 
+/* ── Config editor ── */
+.insp__editor {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.insp__editor-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+/* Mode toggle */
+.insp__mode-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.insp__mode-btn {
+  flex: 1;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.insp__mode-btn:hover:not(:disabled) {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.insp__mode-btn--active {
+  background: color-mix(in srgb, #3b82f6 15%, #1e293b);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.insp__mode-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Paste textarea */
+.insp__paste {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 1.55;
+  padding: 8px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.insp__paste:focus { border-color: #475569; }
+.insp__paste:disabled { opacity: 0.45; }
+
+/* URL input */
+.insp__url {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 6px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.insp__url:focus { border-color: #475569; }
+.insp__url:disabled { opacity: 0.45; }
+
+/* CORS warning */
+.insp__warning {
+  font-size: 10px;
+  color: #fbbf24;
+  background: color-mix(in srgb, #fbbf24 10%, #1e293b);
+  border: 1px solid color-mix(in srgb, #fbbf24 30%, transparent);
+  border-radius: 4px;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
+
+/* Path/key chips */
+.insp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.insp__chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.insp__chip:hover:not(:disabled) {
+  background: #334155;
+  color: #94a3b8;
+  border-color: #475569;
+}
+
+.insp__chip--active {
+  background: color-mix(in srgb, #6d28d9 20%, #1e293b);
+  border-color: #6d28d9;
+  color: #a78bfa;
+}
+
+.insp__chip--array .insp__chip-meta { color: #38bdf8; }
+.insp__chip--scalar .insp__chip-meta { color: #64748b; }
+.insp__chip--active .insp__chip-meta { color: inherit; opacity: 0.7; }
+
+.insp__chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.insp__chip-path { font-weight: 600; }
+
+.insp__chip-meta {
+  font-size: 9px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.insp__chips-hint {
+  font-size: 10px;
+  color: #475569;
+  font-style: italic;
+}
+
+/* Free-text path/key input */
+.insp__path-input {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #94a3b8;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.insp__path-input:focus { border-color: #475569; }
+.insp__path-input:disabled { opacity: 0.45; }
+
+/* Error card */
+.insp__error-card {
+  background: color-mix(in srgb, #ef4444 10%, #1e293b);
+  border: 1px solid color-mix(in srgb, #ef4444 35%, transparent);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #fca5a5;
+  line-height: 1.5;
+}
+
 /* ── Raw response view (Data Source) ── */
 .insp__raw {
   background: #0f172a;
