@@ -227,9 +227,105 @@ function ExitConfigEditor({ node, running, availableJoinKeys, onConfigChange }) 
   );
 }
 
+// ─── Preview-derived outputs (mirrors production buildPreviewOutputs) ─────
+
+function inferType(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return 'array';
+  return typeof v; // string | number | boolean | object | undefined
+}
+
+function PreviewOutputsPanel({ collection }) {
+  const empty = !Array.isArray(collection) || collection.length === 0;
+  return (
+    <div className="insp__derived">
+      <div className="insp__derived-title">Preview-derived outputs</div>
+      {empty ? (
+        <div className="insp__derived-empty">(no rows — outputs not derivable)</div>
+      ) : (
+        <div className="insp__derived-list">
+          {Object.entries(collection[0]).map(([k, v]) => (
+            <div key={k} className="insp__derived-row">
+              <span className="insp__derived-key">{k}</span>
+              <span className="insp__derived-type">{inferType(v)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="insp__derived-note">
+        Object.keys(collection[0]) becomes the canonical output schema.
+      </div>
+    </div>
+  );
+}
+
+// ─── Derived input mappings (mirrors production inputMappings shape) ──────
+
+function deriveInputMappings(node, nodes, edges) {
+  const upstreamIds = edges
+    .filter((e) => e.target === node.id)
+    .map((e) => e.source);
+  return upstreamIds.map((uid) => {
+    const upNode = nodes.find((n) => n.id === uid);
+    const out    = upNode?.data?.output;
+    let column   = '*';
+    if (Array.isArray(out) && out.length > 0) {
+      const keys = Object.keys(out[0]);
+      if (keys.length === 1) column = keys[0];
+    }
+    return { alias: uid, column };
+  });
+}
+
+function InputMappingsPanel({ node, nodes, edges }) {
+  const mappings = deriveInputMappings(node, nodes, edges);
+  if (mappings.length === 0) {
+    return (
+      <div className="insp__derived">
+        <div className="insp__derived-title">Derived input mappings</div>
+        <div className="insp__derived-empty">(no upstream edges — no mappings)</div>
+        <div className="insp__derived-note">
+          Production derives the DAG from these paths instead of edges.
+        </div>
+      </div>
+    );
+  }
+  const lhs = node.id;
+  return (
+    <div className="insp__derived">
+      <div className="insp__derived-title">Derived input mappings</div>
+      <pre className="insp__mappings-code">
+        <span className="insp__mappings-lhs">{lhs}</span>
+        <span className="insp__punct"> → [</span>
+        {'\n'}
+        {mappings.map((m, i) => (
+          <span key={m.alias}>
+            {'  '}
+            <span className="insp__punct">{'{ '}</span>
+            <span className="insp__field-name">alias</span>
+            <span className="insp__colon">: </span>
+            <span className="insp__field-val">"{m.alias}"</span>
+            <span className="insp__punct">, </span>
+            <span className="insp__field-name">column</span>
+            <span className="insp__colon">: </span>
+            <span className="insp__field-val">"{m.column}"</span>
+            <span className="insp__punct">{' }'}</span>
+            {i < mappings.length - 1 ? <span className="insp__punct">,</span> : null}
+            {'\n'}
+          </span>
+        ))}
+        <span className="insp__punct">]</span>
+      </pre>
+      <div className="insp__derived-note">
+        column: "*" = all keys carried forward from upstream collection.
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Inspector ───────────────────────────────────────────────────────
 
-export default function Inspector({ node, running, availablePaths, availableJoinKeys, onConfigChange }) {
+export default function Inspector({ node, nodes, edges, running, availablePaths, availableJoinKeys, onConfigChange }) {
   if (!node) {
     return (
       <div className="insp insp--empty">
@@ -286,6 +382,14 @@ export default function Inspector({ node, running, availablePaths, availableJoin
       {data.nodeType === 'exit' && data.status === 'done' && (
         <ExitDiagram stats={data.stats} />
       )}
+
+      {/* Preview-derived outputs (Extract/Exit, mirrors production) */}
+      {(data.nodeType === 'extract' || data.nodeType === 'exit') && (
+        <PreviewOutputsPanel collection={data.output} />
+      )}
+
+      {/* Derived input mappings — what production would store on this node */}
+      {nodes && edges && <InputMappingsPanel node={node} nodes={nodes} edges={edges} />}
 
       {/* Raw response (datasource only, after run) */}
       {data.nodeType === 'datasource' && data.rawResponse && (

@@ -83,6 +83,7 @@ function NodeStats({ data }) {
   }
 
   if (t === 'extract') {
+    const carries = data.carries ?? [];
     return (
       <div className="fn__stats">
         <div className="fn__stat">
@@ -93,6 +94,12 @@ function NodeStats({ data }) {
           <span className="fn__stat-k">rows out</span>
           <span className="fn__stat-v fn__stat-v--blue">{s.outputRows}</span>
         </div>
+        {carries.length > 0 && (
+          <div className="fn__stat fn__stat--ruled">
+            <span className="fn__stat-k fn__stat-k--purple">carries</span>
+            <span className="fn__stat-v fn__stat-v--mono">{carries.join(', ')}</span>
+          </div>
+        )}
       </div>
     );
   }

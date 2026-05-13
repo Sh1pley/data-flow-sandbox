@@ -114,6 +114,34 @@ html, body, #root {
 
 .btn--reset:hover:not(:disabled) { background: #475569; }
 
+/* ── Validation banner (single-terminal-node check) ── */
+.app__validation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.app__validation--ok {
+  background: color-mix(in srgb, #4ade80 12%, #1e293b);
+  color: #4ade80;
+}
+
+.app__validation--bad {
+  background: color-mix(in srgb, #ef4444 12%, #1e293b);
+  color: #fca5a5;
+}
+
+.app__validation-id {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
 /* ── Body ── */
 .app__body {
   display: flex;

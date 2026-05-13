@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import ReactFlow, {
   Background, Controls, BackgroundVariant,
   useNodesState, useEdgesState,
@@ -29,6 +29,30 @@ function detectCommonKeys(collections) {
   if (filled.length === 0) return [];
   const keySets = filled.map((c) => new Set(Object.keys(c[0])));
   return [...keySets[0]].filter((k) => keySets.every((s) => s.has(k))).sort();
+}
+
+// Terminal nodes: nodes with no outgoing edges. Production now requires
+// exactly one terminal node — this is purely informational here.
+function findTerminalNodeIds(nodes, edges) {
+  const hasOut = new Set(edges.map((e) => e.source));
+  return nodes.filter((n) => !hasOut.has(n.id)).map((n) => n.id);
+}
+
+// Carry-forward: for an Extract node, the upstream-of-upstream aliases that
+// would be implicitly merged into each row by the production engine.
+function computeCarriesMap(nodes, edges) {
+  const upstreamOf = {};
+  edges.forEach((e) => {
+    (upstreamOf[e.target] = upstreamOf[e.target] ?? []).push(e.source);
+  });
+  const map = {};
+  nodes.forEach((n) => {
+    if (n.data.nodeType !== 'extract') return;
+    const directUp  = upstreamOf[n.id] ?? [];
+    const carryList = directUp.flatMap((id) => upstreamOf[id] ?? []);
+    map[n.id] = carryList;
+  });
+  return map;
 }
 
 // ─── Node factory ──────────────────────────────────────────────────────────
@@ -192,6 +216,17 @@ export default function App() {
     availableJoinKeys = detectCommonKeys(upCollections);
   }
 
+  // ─── Single-terminal-node validation (informational, non-blocking) ──────
+  const terminalIds = useMemo(() => findTerminalNodeIds(nodes, edges), [nodes, edges]);
+  const terminalValid = terminalIds.length === 1;
+
+  // ─── Carry-forward map (injected into displayed nodes for FlowNode use) ──
+  const carriesMap = useMemo(() => computeCarriesMap(nodes, edges), [nodes, edges]);
+  const displayNodes = useMemo(
+    () => nodes.map((n) => ({ ...n, data: { ...n.data, carries: carriesMap[n.id] } })),
+    [nodes, carriesMap],
+  );
+
   return (
     <div className="app">
       <div className="app__bar">
@@ -223,10 +258,19 @@ export default function App() {
         </div>
       </div>
 
+      <div
+        className={`app__validation ${terminalValid ? 'app__validation--ok' : 'app__validation--bad'}`}
+      >
+        {terminalValid
+          ? <>✓ Valid: single terminal node <span className="app__validation-id">({terminalIds[0]})</span></>
+          : <>✗ Invalid: {terminalIds.length} terminal nodes (need exactly 1) — <span className="app__validation-id">{terminalIds.join(', ') || '(none)'}</span></>
+        }
+      </div>
+
       <div className="app__body">
         <div className="app__canvas">
           <ReactFlow
-            nodes={nodes} edges={edges}
+            nodes={displayNodes} edges={edges}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onNodeClick={(_, node) => setSelectedNode(node)}
             onPaneClick={() => setSelectedNode(null)}
@@ -253,6 +297,8 @@ export default function App() {
         <div className="app__inspector">
           <Inspector
             node={selectedNode}
+            nodes={nodes}
+            edges={edges}
             running={running}
             availablePaths={availablePaths}
             availableJoinKeys={availableJoinKeys}
