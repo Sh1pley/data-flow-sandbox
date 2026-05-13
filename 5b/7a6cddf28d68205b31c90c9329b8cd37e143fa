@@ -1,0 +1,28 @@
+src/App.css
+  934cdd1f4dc5114a 117-144
+src/nodes/FlowNode.jsx
+  934cdd1f4dc5114a 86,97-102
+src/App.jsx
+  934cdd1f4dc5114a 1,34-57,219-229,261-269,273,300-301
+src/components/Inspector.jsx
+  934cdd1f4dc5114a 230-325,328,386-393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.2",
+  "base_commit_sha": "5b7a6cddf28d68205b31c90c9329b8cd37e143fa",
+  "prompts": {
+    "934cdd1f4dc5114a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f44d50f8-0668-47d7-b261-b8f7fd0189be",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "jshipley <jshipley@movableink.com>",
+      "total_additions": 188,
+      "total_deletions": 3,
+      "accepted_lines": 188,
+      "overriden_lines": 0
+    }
+  }
+}
